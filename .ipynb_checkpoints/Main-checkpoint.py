@@ -11,20 +11,7 @@ from IPython.display import clear_output
 
 novel_link = 'https://freewebnovel.com/invincible-novel.html'
 
-# нужно поделить ссылку на составные части, чтобы вырезать 
 
-r = requests.get(novel_link)
-html_text = r.text
-soup = BeautifulSoup(html_text,'html.parser')
-
-# Получение ссылок на главы книги
-soup_links = soup.find_all("a", class_="con")
-
-print(soup_links[1])
-
-soup_links[1].get('href')
-
-soup_chapter_titles = soup.find_all("li", title)
 
 def update_progress(progress):
     bar_length = 20
@@ -45,88 +32,118 @@ def update_progress(progress):
 
 
 
+# Получаем html-текст страницы
+r = requests.get(novel_link)
+html_text = r.text
+soup = BeautifulSoup(html_text,'html.parser')
 
-book = FictionBook2()
+# Вырезаем часть, в которой находятся ссылки на главы 
+# при этом указаны ссылки не полностью, а только хвост, например "...href="/invincible-novel/chapter-1.html..."
+a = soup.find_all("ul", class_="ul-list5")
+soup2 = BeautifulSoup(str(a),'html.parser')
 
-# Получение названия книги
-title = soup.find("title")
-title = str(title).replace("<title>Novel ", "")
-title = title.replace(" - FastNovel</title>", "")
-book.titleInfo.title = title
+# Получение хвостов ссылок на главы книги
+soup_links = soup2.find_all("a", class_="con")
 
-#book.titleInfo.annotation = "Small test book. Shows basics of FB2 library"
-#book.titleInfo.authors = [Author(firstName="Alex", middleName="Unknown",nickname="Ae_Mc",emails=["ae_mc@mail.ru"],homePages=["ae-mc.ru"])]
-#book.titleInfo.genres = ["sf", "sf_fantasy", "shortstory"]
-#book.titleInfo.coverPageImages = [request.urlopen("https://picsum.photos/1080/1920").read()]
-#book.titleInfo.sequences = [("Example books", 2)]
-#book.documentInfo.authors = ["Ae Mc"]
-book.documentInfo.version = "1.1"
-
+# Проверка:
+#soup_links[0].get('href')
 
 
 
-link_list = []
-titles_list = []
 
+# Собираем список с реальными ссылками на главы книги
 i = 1
-for link in soup_links:
-    link_text_1 = 'https://fastnovel.net/the-first-order3-3782'+link.get('href')
-    link_titles = link.get('title')
-    link_list.append([i, link_titles.replace("The First Order ", ""), link_text_1])
-    i=i+1
-    #if i == 3: break
+chapter_link = []
+garbage = []
+for chapter in soup_links:
+    href_link_string = chapter.get('href')
+    chapter_last_link = href_link_string[18:] # вырезаем из текста "/invincible-novel/chapter-3753.html" крайнее значение "hapter-3753.html"
+    chapter_link.append(novel_link[:-5]+"/"+chapter_last_link)
 
-chapter_entity=[]
+    garbage.append(href_link_string)
+
+# В общем случе раскоментить
+# Вырзем первые 6 ссылок из-за указания последних загруженных глав
+#chapter_link = chapter_link[6:]
+
+# Выгрузить последние главы
+chapter_link = chapter_link[-200:]
+
+
+
+# Проходимся по главам и достаем оттуда текст
+
+chapters = []
 chapters_ = []
 
-book.chapters = []
+errors = []
 
 k = 0
-for link_i in link_list:
-    req = requests.get(link_i[2])
-    link_text = req.text
-    link_soup = BeautifulSoup(link_text,'html.parser')
-    chapter_text = link_soup.find_all("div", {"id": "chapter-body"})
-    chapter_text = str(chapter_text)
-    chapter_text = chapter_text.replace("</p><div", "</p> <div")
-    chapter_text = chapter_text.replace("</div><p>", "</div> <p>")
-    chapter_text = chapter_text.replace("\\", "")
-    chapter_text = chapter_text.replace("Â\xa0 ", "")
-    chapter_text = chapter_text.replace("â\xa0 ", "")
-    chapter_text = chapter_text.replace("â\x80¦", "...")
-    chapter_text = chapter_text.replace("â\x80\x94", "—")
-    #chapter_text = chapter_text.replace("\\", "")
-    #chapter_text = chapter_text.replace("\'s", " is")
-    #chapter_text = chapter_text.replace("\'t", " not")
-    #chapter_text = chapter_text.replace("\'re", " are")
-    #chapter_text = chapter_text.replace("\'v", " have")
-    #chapter_text = chapter_text.replace("\'m", "  am")
-    #chapter_text = chapter_text.replace("\'ll", " will")
-    chapter_text = chapter_text.replace("â\x80¦Â\xa0", "......")
-    chapter_text_splitted = chapter_text.split("p>")
+for iter_chapter in chapter_link:
+    time.sleep(1)
+    #print(iter_chapter)
+    
+    req_chapter_link = requests.get(iter_chapter)
+    chapter_html_text = req_chapter_link.text
+    chapter_soup = BeautifulSoup(chapter_html_text,'html.parser')    
+    chapter_soup_text = str(chapter_html_text)
+     
+    # вырезаю split-ом из-за того, что при "find_all" существеная часть текста пропадает
+    # Сразу чистим от </p>
+    chapter_soup_text = chapter_soup_text.replace("</p>", "")
+    
+    chapter_soup_text = chapter_soup_text.replace("<strong><u>", "")
+    chapter_soup_text = chapter_soup_text.replace("</u></strong> ", "")
+
+    chapter_soup_text = chapter_soup_text.replace("<h4>", "")
+    chapter_soup_text = chapter_soup_text.replace("</h4>", "")
+
+    chapter_soup_text = chapter_soup_text.replace("<b></b> ", "")
+
+    chapter_soup_text = chapter_soup_text.replace("</div>", "")
+    
+    chapter_soup_text2 = chapter_soup_text.split("<div id=\"article\">")
+    
+    if len(chapter_soup_text2)>1:
+        chapter_soup_text3 = chapter_soup_text2[1].split("<div class=\"notice-text\">")
+        chapter_soup_text4 = chapter_soup_text3[0].split("<p>")
+        ch_er = "Выполнение главы:" + iter_chapter
+        errors.append(ch_er)
+    else:
+        print(iter_chapter)
+        print(req_chapter_link)
+        chapter_soup_text3 = ""
+        chapter_soup_text4 = []
+        ch_er = "!!! Проблемная глава:" + iter_chapter
+        errors.append(ch_er)
     
 
-    l = ""
-    chapter_text = list()
-    for i in chapter_text_splitted:
-        i = i.replace("</", "")
-        i = i.replace("<", "")
-        if i.find("div class") != -1:
-            continue
-        if i.find("[div id") != -1:
-            continue
-        if i == "div>]":
-            continue
-        if i == "":
-            continue
-        chapter_text.append(i)
-    chapter_title = str(link_i[1])
-    book.chapters.append((chapter_title, chapter_text))
-    update_progress(k / len(link_list))
+    # вырезаем из строк типовое барахло "A day passed. <div style="margin-top: 0px; margin-botto%"
+    new_txt = []
+    for txt in chapter_soup_text4:
+        txt_ = txt.split("<div style")
+
+        # убираем пустые значения из списка абзацев в главе
+        if txt_[0]!= "":
+                 if txt != " ":
+                     new_txt.append(txt_[0])
+    
+    chapters.append(new_txt)
+    update_progress(k / len(chapter_link))
+    print("Последняя глава:" + iter_chapter)
     k=k+1
 
 
-update_progress(1)
-book.write("TheFirsOrder.fb2")
 
+book = FictionBook2()
 
+title = 'INVINCIBLE'
+book.titleInfo.title = title
+book.documentInfo.version = "1.1"
+
+book.chapters = []
+
+for i in chapters:
+    book.chapters.append((i[0], i[1:]))
+
+book.write(title + ".fb2")
