@@ -1,3 +1,8 @@
+# Стандартная команда на запуск
+#
+#
+#
+
 
 import requests
 from bs4 import BeautifulSoup
@@ -25,9 +30,9 @@ def save_html(content, filename):
     with open(filename, 'w', encoding='utf-8') as file:
         file.write(content)
 
-def main():
+def main(url):
     #url = 'https://freewebnovel.com/novel/star-odyssey/chapter-3401'  # Replace with the target URL
-    url = 'https://freewebnovel.com/novel/swallowed-star/chapter-1353'
+    #url = 'https://freewebnovel.com/novel/swallowed-star/chapter-1353'
     html_content = get_html(url)
     if html_content:
         save_html(html_content, 'page.html')
@@ -44,5 +49,6 @@ def fetch_and_save_html(url, filename):
         print("Failed to retrieve HTML content.")
 
 if __name__ == "__main__":
-    main()
+    url = 'https://freewebnovel.com/novel/swallowed-star/chapter-1353'
+    main(url)
     
