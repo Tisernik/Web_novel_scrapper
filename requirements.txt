@@ -1,0 +1,15 @@
+numpy==1.20.0
+pandas>=1.2.0
+scipy<=1.6.0
+
+
+
+import requests 
+import numpy as np
+import io
+import os
+from bs4 import BeautifulSoup
+from FB2 import FictionBook2, Author
+from urllib import request
+import time, sys
+from IPython.display import clear_output
